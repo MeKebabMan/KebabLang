@@ -21,6 +21,8 @@ int main() {
         printf("Token: %s -> %d\n", Tokens.Array[index].Data, Tokens.Array[index].Token);
     }
 
+    printf("\nAllocated Tokens: %zu\nAllocated Memory: %zu\n", Tokens.AllocatedTokens, Tokens.Size);
+
     // Free the lexer
     FreeLexer(&Tokens);
 
