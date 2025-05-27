@@ -7,7 +7,7 @@ cc := gcc
 # Cflags
 header_files := -Iinclude
 cflags_development := -march=native -Wall -Wextra -g3 -Oz -fstack-protector-strong
-cflags_production := -march=native -o3 -flto -fno-plt -s --as-needed
+cflags_production := -march=native -o3 -flto -fno-plt -s --as-needed -DNDEBUG
 
 # Execute able
 exe := $(bin)/KebabLang.out
