@@ -1,3 +1,5 @@
+#include <assert.h>
+#include <complex.h>
 #include <kebablang/lexer.h>
 #include <KebabLib.h>
 #include <fcntl.h>
@@ -47,6 +49,7 @@ typedef enum {
 
 static int CreateToken(TokenArray* Array, Token** Output); // Declaration 
 static int ExtendTokenArray(TokenArray* Array, size_t ExtendSize); // Declaration
+static int CleanTokenArray(TokenArray* Array); // Declaration
 
 static int CreateToken(TokenArray* Array, Token** Output) {
 
@@ -89,6 +92,10 @@ static int ExtendTokenArray(TokenArray* Array, size_t ExtendSize) {
         return -1;
     }
 
+    if (ExtendSize == 0) {
+        return 0; // Skip
+    }
+
     // New allocation
     Token* NewAllocation = malloc((Array->Size + ExtendSize) * sizeof(Token));
     if (NewAllocation == NULL) {
@@ -112,6 +119,32 @@ static int ExtendTokenArray(TokenArray* Array, size_t ExtendSize) {
 
 static int CleanTokenArray(TokenArray* Array) { // Cleans up all the unused space within the Array (Based on size_t AllocatedTokens)
     
+    if (Array == NULL || Array->Array == NULL) {
+        return -1;
+    }
+
+    if (Array->Size == Array->AllocatedTokens) {
+        return 0; // Skip
+    }
+    
+    // Allocate new memory
+    Token* NewAllocation = malloc(Array->AllocatedTokens * sizeof(Token));
+    if (NewAllocation == NULL) {
+        return -1;
+    }
+
+    // Copy old memory
+    memcpy(NewAllocation, Array->Array, Array->AllocatedTokens * sizeof(Token));
+
+    // Free the old allocation
+    free(Array->Array);
+
+    // Replace variable pointer
+    Array->Array = NewAllocation;
+    
+    // Update the size
+    Array->Size = Array->AllocatedTokens;
+
     return 0;
 }
 
@@ -129,7 +162,7 @@ TokenArray Tokenize(int fd) {
         return FailedTokenize;
     }
 
-    // Ensure the file descripter is a normal file
+    // Ensure the file is a normal file
     if (!S_ISREG(metadata.st_mode)) {
         return FailedTokenize;
     }
@@ -490,7 +523,7 @@ TokenArray Tokenize(int fd) {
                         // Type the token
                         if (Length == 2) {
                             Output->Token = TOKEN_MULTI_OPERATOR;
-                        } else {
+                        } else if (Length == 1) {
                             Output->Token = TOKEN_SINGLE_OPERATOR;
                         }
 
@@ -569,11 +602,19 @@ TokenArray Tokenize(int fd) {
     // Clean up
     free(Buffer);
 
+    // Clean Array
+    if (CleanTokenArray(&Array) == -1) {
+        fputs("Failed to clean token array\n", stderr);
+        FreeLexer(&Array);
+        return FailedTokenize;
+    }
+
     return Array;
 }
 
 void FreeLexer(TokenArray* Array) {
-    if (Array->Array == NULL) {
+    
+    if (Array == NULL || Array->Array == NULL) {
         return; // Ensure we are not freeing a NULL array (Token* Array)
     }
     
@@ -592,7 +633,7 @@ void FreeLexer(TokenArray* Array) {
     free(Array->Array);
     Array->Array = NULL; // Ensure no undefined behaviour
 
-    // Reset fields within TokenArray
+    // Reset fields within TokenArray (In case of feature modifications)
     Array->Size = 0;
     Array->AllocatedTokens = 0;
 
