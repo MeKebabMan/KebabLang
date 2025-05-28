@@ -66,18 +66,17 @@ static int CreateToken(TokenArray* Array, Token** Output) {
     }
 
     // Create the Token
-    Token NewToken = {
+    Token* NewToken = &Array->Array[Array->AllocatedTokens];
+    
+    *NewToken = (Token){
         .Token = TOKEN_IDENTIFIER,
         .Data = NULL,
         .Length = 0
     };
 
-    // Insert
-    Array->Array[Array->AllocatedTokens] = NewToken;
-
     // Output
     if (Output != NULL) {
-        *Output = &Array->Array[Array->AllocatedTokens];
+        *Output = NewToken;
     }
 
     // Increment Allocated Tokens
@@ -97,7 +96,7 @@ static int ExtendTokenArray(TokenArray* Array, size_t ExtendSize) {
     }
 
     // New allocation
-    Token* NewAllocation = malloc((Array->Size + ExtendSize) * sizeof(Token));
+    Token* NewAllocation = calloc(Array->Size + ExtendSize, sizeof(Token));
     if (NewAllocation == NULL) {
         return -1;
     }
@@ -174,7 +173,8 @@ TokenArray Tokenize(int fd) {
     TokenArray Array = {
         .Array = malloc(1 * sizeof(Token)),
         .Size = 1,
-        .AllocatedTokens = 0
+        .AllocatedTokens = 0,
+        .CursorOffset = 0
     };
 
     if (Array.Array == NULL) {

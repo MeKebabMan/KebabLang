@@ -42,6 +42,7 @@ typedef struct {
     Token* Array;
     size_t Size; // Allocated Memory for the array
     size_t AllocatedTokens; // How many tokens are allocated
+    size_t CursorOffset; // Cursor for the Token array.. (Mainly used by the parser)
 } TokenArray;
 
 // Functions
