@@ -594,6 +594,27 @@ TokenArray Tokenize(int fd) {
         // Ensure Null Terminator
         Output->Data[Length] = '\0'; // In case of feature modifications..
 
+        // Type the token
+        
+        // Defaults to TOKEN_INDENTIFER
+
+        // Keywords
+        if (Output->Token == TOKEN_IDENTIFIER) {
+
+            size_t Keywords = sizeof(KeywordEntries)/sizeof(KeywordEntries[0]);
+            for (size_t index = 0; index < Keywords; index++) {
+                if (strcmp(Output->Data, KeywordEntries[index].Word) == 0) { // In this case strcmp is safe because both strings are NULL terminated
+                    Output->Token = KeywordEntries[index].Token;
+                }
+            }
+
+        }
+        
+        // Number
+        if (IsNumberOnly(Output->Data, Output->Length) == 0 && Output->Token == TOKEN_IDENTIFIER) {
+            Output->Token = TOKEN_NUMBER;
+        }
+
         // Reset tracking variables in case of feature modifications
         Start = Invalid_Index;
         Mode = LEXER_EMPTY;
