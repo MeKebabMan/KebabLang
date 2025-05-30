@@ -22,8 +22,9 @@ typedef enum {
     ASTNODE_BOOLEAN, // A boolean (true / false)
     ASTNODE_MATH_OPERATION, // Used for math.. <LEFT> <OPERATOR> <RIGHT> (3 * 2, etc) (struct MathOperation)
     ASTNODE_VARIABLE_DEFINE, // Used for creating variables.. MyVariable = "Hello, World!" (Struct VariableDefine)
+    ASTNODE_BLOCK, // Used for { <BODY> } 
     ASTNODE_FUNCTION_CALL, // Used for calling functions.. <Function>() (struct FunctionCall)
-    ASTNODE_FUNCTION_DEFINE, // Used for creating functions.. <Function>() { <Body> } 
+    ASTNODE_FUNCTION_DEFINE, // Used for creating functions.. <Function>() { <Body> }
     ASTNODE_WHILE_LOOP, // Used for creating a loop.. while <condition> { <Body> }
 } NodeTypes;
 
@@ -38,67 +39,69 @@ typedef enum {
 
 // Structures
 
-typedef struct AST_Args_Arena {
-    struct ASTNode* Args;
-    size_t  Memory;
-    size_t AllocatedMemory;
+typedef struct AST_Args {
+    struct AST_Node* Args;
+    size_t  Capacity;
+    size_t Count;
 } AST_Args;
 
-typedef struct AST_Body_Arena {
-        struct ASTNode** statements;
-        size_t Memory;
-        size_t AllocatedMemoy;
-} AST_Body_Arena;
 
 // Structures (AST)
 
+typedef struct AST_Block {
+        struct AST_Node** statements;
+        size_t Capacity;
+        size_t Count;
+} AST_Block;
+
 typedef struct AST_WhileLoop {
-    struct ASTNode* Condition;
-    struct AST_Body_Arena* Body;
+    struct AST_Node* Condition;
+    struct AST_Node* Body;
 } AST_WhileLoop;
 
 typedef struct AST_FunctionDefine {
     char* FunctionName;
-    struct AST_Args_Arena* Args;
-    struct AST_Body_Arena* Body;
+    struct AST_Args* Args;
+    struct AST_Node* Body;
 } AST_FunctionDefine;
 
 typedef struct AST_FunctionCall {
     char* FunctionName;
-    struct AST_Args_Arena* Args;
+    struct AST_Args* Args;
 } AST_FunctionCall;
 
 typedef struct AST_VariableDefine {
     char* VariableName;
-    struct ASTNode* VariableValue;
+    struct AST_Node* VariableValue;
 } AST_VariableDefine;
 
 typedef struct AST_MathOperation {
     MathOperators Operator;
-    struct ASTNode* Left;
-    struct AStNode* Right;
+    struct AST_Node* Left;
+    struct AST_Node* Right;
 } AST_MathOperation;
 
 
-typedef struct ASTNode {
+typedef struct AST_Node {
     NodeTypes ASTType;
     union {
-        intmax_t Number;
-        char* String;
-        char* Variable;
-        bool Boolean;
-        AST_MathOperation Math;
-        AST_VariableDefine VariableDefine;
-        AST_FunctionCall FunctionCall;
-        AST_FunctionDefine FunctionDefine;
-        AST_WhileLoop WhileLoop;
+        intmax_t Number; // ASTNODE_NUMBER
+        char* String; // ASTNODE_STRING
+        char* Variable; // ASTNODE_VARIABLE
+        bool Boolean; // ASTNODE_BOOLEAN
+        AST_MathOperation Math; // ASTNODE_MATH_OPERATION
+        AST_VariableDefine VariableDefine; // ASTNODE_VARIABLE_DEFINE
+        AST_Block Block; // ASTNODE_BLOCK
+        AST_FunctionCall FunctionCall; // ASTNODE_FUNCTION_CALL
+        AST_FunctionDefine FunctionDefine; // ASTNODE_FUNCTION_DEFINE
+        AST_WhileLoop WhileLoop; // ASTNODE_WHILE_LOOP
     };
 } ASTNode;
 
-typedef struct AST_Arena {
-    ASTNode* Array;
-    size_t Memory;
-    size_t AllocatedMemory;
+typedef struct Abstract_Syntax_Tree{
+    struct AST_Node* Array;
+    size_t Capacity;
+    size_t Count;
 } ASTArena;
 
 // Functions
