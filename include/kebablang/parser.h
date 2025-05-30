@@ -41,8 +41,8 @@ typedef enum {
 
 typedef struct AST_Args {
     struct AST_Node* Args;
-    size_t  Capacity;
-    size_t Count;
+    size_t Size;
+    size_t AllocatedNodes;
 } AST_Args;
 
 
@@ -50,8 +50,8 @@ typedef struct AST_Args {
 
 typedef struct AST_Block {
         struct AST_Node** statements;
-        size_t Capacity;
-        size_t Count;
+        size_t Size;
+        size_t AllocatedNodes;
 } AST_Block;
 
 typedef struct AST_WhileLoop {
@@ -96,13 +96,13 @@ typedef struct AST_Node {
         AST_FunctionDefine FunctionDefine; // ASTNODE_FUNCTION_DEFINE
         AST_WhileLoop WhileLoop; // ASTNODE_WHILE_LOOP
     };
-} ASTNode;
+} AST_Node;
 
 typedef struct Abstract_Syntax_Tree{
     struct AST_Node* Array;
-    size_t Capacity;
-    size_t Count;
-} ASTArena;
+    size_t Size;
+    size_t AllocateNodes;
+} Abstract_Syntax_Tree;
 
 // Functions
 
