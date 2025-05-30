@@ -11,7 +11,7 @@
 #include <unistd.h>
 
 // Marcos
-#define FailedTokenize (TokenArray){(Token*)NULL, 0, 0}
+#define FailedTokenize (TokenArray){(Token*)NULL, 0, 0, 0}
 #define Is_Start(c) (c != ' ' && c != '\t' && c != '(' && c != ')' && c != '[' && c != ']' && c != '{' && c != '}')
 #define Is_Empty(c) (c == ' ' || c == '\t' || c == '\n' || c == '\r')
 #define Is_SingleCharacter(c) (c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' || c == '#' || c == ',')
