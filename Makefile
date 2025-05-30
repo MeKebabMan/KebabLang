@@ -6,7 +6,7 @@ cc := gcc
 
 # Cflags
 header_files := -Iinclude
-cflags_development := -march=native -Wall -Wextra -g3 -Oz -fstack-protector-strong
+cflags_development := -march=native -fsanitize=address,undefined -Wall -Wextra -g3 -O0 -fstack-protector-strong -fno-omit-frame-pointer
 cflags_production := -march=native -o3 -flto -fno-plt -s --as-needed -DNDEBUG
 
 # Execute able
