@@ -6,4 +6,10 @@
 #include <unistd.h>
 
 // Marcos
-#define FailedParse (AbstractSyntaxTree){(void*)NULL, 0}
+#define AST_FailedParse (Abstract_Syntax_Tree){(void*)NULL, 0, 0}
+
+// Parser functions (static)
+
+// Helper functions (static)
+
+static struct AST_Node* Create_AST_Node();
