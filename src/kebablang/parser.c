@@ -26,8 +26,6 @@ static int Extend_Array(void* Array, size_t Memory, size_t ExtendBy, size_t Size
 
 static Token* ViewCurrentToken(TokenArray Tokens) {
 
-    assert(Tokens.CursorOffset > Tokens.AllocatedTokens);
-
     if (Tokens.Array == NULL || Tokens.CursorOffset > Tokens.AllocatedTokens) { // (Guard Rail)
         return NULL;
     }
@@ -36,8 +34,6 @@ static Token* ViewCurrentToken(TokenArray Tokens) {
 }
 
 static Token* NextToken(TokenArray* Tokens) {
-    
-    assert(Tokens->CursorOffset > Tokens->AllocatedTokens);
     
     if (Tokens == NULL || Tokens->Array == NULL || Tokens->CursorOffset >= Tokens->AllocatedTokens) { // (Guard Rail)
         return NULL;
@@ -55,8 +51,6 @@ static AST_Node* Create_AST_Node(Abstract_Syntax_Tree* AST) {
     if (AST == NULL || AST->Array == NULL) {
         return NULL;
     }
-
-    assert(AST->AllocateNodes > AST->Size);
 
     if (AST->AllocateNodes == AST->Size) {
         // Extend
