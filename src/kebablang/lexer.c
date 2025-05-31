@@ -536,6 +536,7 @@ TokenArray Tokenize(int fd) {
                             index++;
                         }
 
+                        index++;
                         Start = Invalid_Index;
                         Mode = LEXER_NORMAL;
                         continue; // Skip
