@@ -58,7 +58,7 @@ static int CreateToken(TokenArray* Array, Token** Output) {
     }
 
     // Check if we have enough space to insert
-    if (Array->AllocatedTokens >= Array->Size) {
+    if (Array->AllocatedTokens == Array->Size) {
         // Extend the Array
         if (ExtendTokenArray(Array, 4) == -1) { // Extend by 4 so we can easily insert
             return -1;
@@ -183,7 +183,7 @@ TokenArray Tokenize(int fd) {
 
     // Read the Buffer
     size_t TotalBytesRead = 0;
-    char* Buffer = calloc(FileSize + 1, sizeof(char)); // +! for the NULL Terminator
+    char* Buffer = calloc(FileSize + 1, sizeof(char)); // +1 for the NULL Terminator
     if (Buffer == NULL) {
         FreeLexer(&Array);
         return FailedTokenize;
@@ -284,7 +284,7 @@ TokenArray Tokenize(int fd) {
 
         // Handle Single tokens that are connected to other Tokens..
 
-        if (Mode == LEXER_NORMAL && (Is_SingleCharacter(Buffer[index]) || Is_Operator(Buffer[index]))) { // Unsure if this strategy is gonna work..
+        if (Mode == LEXER_NORMAL && (Is_SingleCharacter(Buffer[index]) || Is_Operator(Buffer[index]))) {
             Mode = LEXER_SINGLE_CHARACTER;
         }
 
@@ -434,6 +434,27 @@ TokenArray Tokenize(int fd) {
 
                         // Ensure Null Terminator
                         Output->Data[Length] = '\0'; // In case of feature modifications..
+
+                        // Type the token
+                        
+                        // Defaults to TOKEN_INDENTIFER
+
+                        // Keywords
+                        if (Output->Token == TOKEN_IDENTIFIER) {
+
+                            size_t Keywords = sizeof(KeywordEntries)/sizeof(KeywordEntries[0]);
+                            for (size_t index = 0; index < Keywords; index++) {
+                                if (strcmp(Output->Data, KeywordEntries[index].Word) == 0) { // In this case strcmp is safe because both strings are NULL terminated
+                                    Output->Token = KeywordEntries[index].Token;
+                                }
+                            }
+
+                        }
+                        
+                        // Number
+                        if (IsNumberOnly(Output->Data, Output->Length) == 0 && Output->Token == TOKEN_IDENTIFIER) {
+                            Output->Token = TOKEN_NUMBER;
+                        }
 
                         Start = Invalid_Index;
                         Mode = LEXER_NORMAL;
