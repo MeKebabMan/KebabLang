@@ -27,8 +27,10 @@ typedef enum {
     TOKEN_IF, // if
     TOKEN_ELSE, // else
     TOKEN_WHILE, // while
+    TOKEN_FUNCTION, // function
     TOKEN_FALSE, // false (BOOLEAN)
     TOKEN_TRUE, //  true (BOOLEAN)
+    TOKEN_COMMA, // ,
 } TokenType;
 
 // structures

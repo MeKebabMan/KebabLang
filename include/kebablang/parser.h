@@ -22,10 +22,10 @@ typedef enum {
     ASTNODE_BOOLEAN, // A boolean (true / false)
     ASTNODE_MATH_OPERATION, // Used for math.. <LEFT> <OPERATOR> <RIGHT> (3 * 2, etc) (struct MathOperation)
     ASTNODE_VARIABLE_DEFINE, // Used for creating variables.. MyVariable = "Hello, World!" (Struct VariableDefine)
-    ASTNODE_BLOCK, // Used for { <BODY> } 
     ASTNODE_FUNCTION_CALL, // Used for calling functions.. <Function>() (struct FunctionCall)
     ASTNODE_FUNCTION_DEFINE, // Used for creating functions.. <Function>() { <Body> }
     ASTNODE_WHILE_LOOP, // Used for creating a loop.. while <condition> { <Body> }
+    ASTNODE_IF, // If statement.. if <condition> { <Body> }
 } NodeTypes;
 
 typedef enum {
@@ -45,29 +45,34 @@ typedef struct AST_Args {
     size_t AllocatedNodes;
 } AST_Args;
 
-
-// Structures (AST)
-
 typedef struct AST_Block {
-        struct AST_Node** statements;
+        struct AST_Node* statements;
         size_t Size;
         size_t AllocatedNodes;
 } AST_Block;
 
+// Structures (AST)
+
 typedef struct AST_WhileLoop {
     struct AST_Node* Condition;
-    struct AST_Node* Body;
+    AST_Block Block; // ASTNODE_BLOCK
 } AST_WhileLoop;
+
+typedef struct AST_If {
+    struct AST_Node* Condition;
+    AST_Block Block;
+    AST_Block Else_block;
+} AST_If;
 
 typedef struct AST_FunctionDefine {
     char* FunctionName;
-    struct AST_Args* Args;
-    struct AST_Node* Body;
+    struct AST_Args Args;
+    AST_Block Block; // ASTNODE_BLOCK
 } AST_FunctionDefine;
 
 typedef struct AST_FunctionCall {
     char* FunctionName;
-    struct AST_Args* Args;
+    struct AST_Args Args;
 } AST_FunctionCall;
 
 typedef struct AST_VariableDefine {
@@ -91,17 +96,17 @@ typedef struct AST_Node {
         bool Boolean; // ASTNODE_BOOLEAN
         AST_MathOperation Math; // ASTNODE_MATH_OPERATION
         AST_VariableDefine VariableDefine; // ASTNODE_VARIABLE_DEFINE
-        AST_Block Block; // ASTNODE_BLOCK
         AST_FunctionCall FunctionCall; // ASTNODE_FUNCTION_CALL
         AST_FunctionDefine FunctionDefine; // ASTNODE_FUNCTION_DEFINE
         AST_WhileLoop WhileLoop; // ASTNODE_WHILE_LOOP
+        AST_If IfStatement; // ASTNODE_IF && ASTNODE_IF_ELSE
     };
 } AST_Node;
 
 typedef struct Abstract_Syntax_Tree{
     struct AST_Node* Array;
     size_t Size;
-    size_t AllocateNodes;
+    size_t AllocatedNodes;
 } Abstract_Syntax_Tree;
 
 // Functions

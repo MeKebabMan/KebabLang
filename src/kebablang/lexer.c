@@ -32,7 +32,8 @@ static const Keyword KeywordEntries[] = {
     {"while", TOKEN_WHILE},
     {"else", TOKEN_ELSE},
     {"false", TOKEN_FALSE},
-    {"true", TOKEN_TRUE}
+    {"true", TOKEN_TRUE},
+    {"function", TOKEN_FUNCTION}
 };
 
 // Enums
@@ -499,6 +500,8 @@ TokenArray Tokenize(int fd) {
                             Output->Token = TOKEN_BRACKETS1;
                         } else if (SingleCharacter == '}') {
                             Output->Token = TOKEN_BRACKETS2;
+                        } else if (SingleCharacter == ',') {
+                            Output->Token = TOKEN_COMMA;
                         }
 
                         Output->Length = Length;
