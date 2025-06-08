@@ -6,7 +6,8 @@ cc := gcc
 
 # Cflags
 header_files := -Iinclude
-cflags_development := -march=native -Wall -Wextra -g3 -O0 -fstack-protector-strong -fno-omit-frame-pointer
+cflags_san := -fsanitize=address,undefined  
+cflags_development := -march=native -Wall -Wextra -g3 -O0 -fstack-protector-strong -fno-omit-frame-pointer $(cflags_san)
 cflags_production := -march=native -o3 -flto -fno-plt -s --as-needed -DNDEBUG
 
 # Execute able
@@ -34,8 +35,5 @@ $(exe): $(objs)
 
 clean:
 	rm -f $(exe) $(objs)
-
-valgrind:
-	valgrind $(exe)
 
 .PHONY: clean valgrind
