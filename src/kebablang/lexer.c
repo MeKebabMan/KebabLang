@@ -11,12 +11,19 @@
 #include <unistd.h>
 
 // Marcos
-#define FailedTokenize (TokenArray){(Token*)NULL, 0, 0, 0}
-#define Is_Start(c) (c != ' ' && c != '\t' && c != '(' && c != ')' && c != '[' && c != ']' && c != '{' && c != '}')
-#define Is_Empty(c) (c == ' ' || c == '\t' || c == '\n' || c == '\r')
-#define Is_SingleCharacter(c) (c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' || c == '#' || c == ',')
-#define Is_Operator(c) (c == '+' || c == '-' || c == '*' || c == '/' || c == '^' || c == '%' || c == '<' || c == '>' || c == '!' || c == '=')
+#define FailedTokenize (Lexer){(Token*)NULL, 0, 0, 0}
+
+#define Is_Start(c) ((c) != ' ' && (c) != '\n' && (c) != '\t')
+
+#define Is_Empty(c) ((c) == ' ' || (c) == '\t' || (c) == '\n' || (c) == '\r')
+
+#define Is_SingleCharacter(c) ((c) == '(' || (c) == ')' || (c) == '[' || (c) == ']' || (c) == '{' || (c) == '}' || \
+    (c) == '#' || (c) == ',' || (c) == '@' || (c) == '$' || (c) == '|' || (c) == '\\' || (c) == '`' || (c) == '~' || (c) == '?')
+
+#define Is_Operator(c) ((c) == '+' || (c) == '-' || (c) == '*' || (c) == '/' || (c) == '^' || (c) == '%' || (c) == '<' || (c) == '>' || (c) == '!' || (c) == '=')
+
 #define Invalid_Index ((size_t)-1)
+#define Error(Function, Messaage) fprintf(stderr, "Lexer: (%s) %s\n", Function, Messaage);
 
 // Structures
 
@@ -43,26 +50,28 @@ typedef enum {
     LEXER_STRING,
     LEXER_EMPTY,
     LEXER_COMMENT,
-    LEXER_SINGLE_CHARACTER
+    LEXER_SINGLE_CHARACTER,
 } LexerMode;
 
 // Helper functions (static)
 
-static int CreateToken(TokenArray* Array, Token** Output); // Declaration 
-static int ExtendTokenArray(TokenArray* Array, size_t ExtendSize); // Declaration
-static int CleanTokenArray(TokenArray* Array); // Declaration
+static Token* ReserveToken(Lexer* Array); // Declaration 
+static int ExtendLexer(Lexer* Array, size_t ExtendSize); // Declaration
+static int CleanLexer(Lexer* Array); // Declaration
 
-static int CreateToken(TokenArray* Array, Token** Output) {
+static Token* ReserveToken(Lexer* Array) {
 
     if (Array == NULL || Array->Array == NULL) {
-        return -1;
+        Error("CreateToken", "Expected NON NULL args")
+        return NULL;
     }
 
     // Check if we have enough space to insert
     if (Array->AllocatedTokens == Array->Size) {
         // Extend the Array
-        if (ExtendTokenArray(Array, 4) == -1) { // Extend by 4 so we can easily insert
-            return -1;
+        if (ExtendLexer(Array, 4) == -1) { // Extend by 4 so we can easily insert
+            Error("CreateToken", "Failed to extend memory");
+            return NULL;
         }
     }
 
@@ -72,23 +81,20 @@ static int CreateToken(TokenArray* Array, Token** Output) {
     *NewToken = (Token){
         .Token = TOKEN_IDENTIFIER,
         .Data = NULL,
-        .Length = 0
+        .Length = 0,
+        .Line = 0
     };
-
-    // Output
-    if (Output != NULL) {
-        *Output = NewToken;
-    }
 
     // Increment Allocated Tokens
     Array->AllocatedTokens++;
 
-    return 0;
+    return NewToken;
 }
 
-static int ExtendTokenArray(TokenArray* Array, size_t ExtendSize) {
+static int ExtendLexer(Lexer* Array, size_t ExtendSize) {
 
     if (Array == NULL || Array->Array == NULL) {
+        Error("ExtendLexer", "Expected NON NULL args");
         return -1;
     }
 
@@ -99,6 +105,7 @@ static int ExtendTokenArray(TokenArray* Array, size_t ExtendSize) {
     // New allocation
     Token* NewAllocation = calloc(Array->Size + ExtendSize, sizeof(Token));
     if (NewAllocation == NULL) {
+        Error("ExtendLexer", "Failed to allocate memory");
         return -1;
     }
 
@@ -117,9 +124,10 @@ static int ExtendTokenArray(TokenArray* Array, size_t ExtendSize) {
     return 0;
 }
 
-static int CleanTokenArray(TokenArray* Array) { // Cleans up all the unused space within the Array (Based on size_t AllocatedTokens)
+static int CleanLexer(Lexer* Array) { // Cleans up all the unused space within the Array (Based on size_t AllocatedTokens)
     
     if (Array == NULL || Array->Array == NULL) {
+        Error("CleanLexer", "Expected NON NULL args");
         return -1;
     }
 
@@ -130,6 +138,7 @@ static int CleanTokenArray(TokenArray* Array) { // Cleans up all the unused spac
     // Allocate new memory
     Token* NewAllocation = malloc(Array->AllocatedTokens * sizeof(Token));
     if (NewAllocation == NULL) {
+        Error("CleanLexer", "Failed to allocate memory");
         return -1;
     }
 
@@ -150,20 +159,22 @@ static int CleanTokenArray(TokenArray* Array) { // Cleans up all the unused spac
 
 // Functions
 
-TokenArray Tokenize(int fd); // Declaration
-void FreeLexer(TokenArray* Array); // Declaration
+Lexer Tokenize(int fd); // Declaration
+void FreeLexer(Lexer* Array); // Declaration
 
-TokenArray Tokenize(int fd) {
+Lexer Tokenize(int fd) {
 
     // Get the file MetaData
     // By the way this also is pretty much a check to ensure the file descripter is valid
     struct stat metadata; 
     if (fstat(fd, &metadata) == -1) {
+        Error("Tokenize", "Failed to get file meta data");
         return FailedTokenize;
     }
 
     // Ensure the file is a normal file
     if (!S_ISREG(metadata.st_mode)) {
+        Error("Tokenize", "Expected regular file");
         return FailedTokenize;
     }
 
@@ -171,7 +182,7 @@ TokenArray Tokenize(int fd) {
     size_t FileSize = (size_t)metadata.st_size;
 
     // Allocate the Token Array
-    TokenArray Array = {
+    Lexer Array = {
         .Array = malloc(1 * sizeof(Token)),
         .Size = 1,
         .AllocatedTokens = 0,
@@ -179,6 +190,7 @@ TokenArray Tokenize(int fd) {
     };
 
     if (Array.Array == NULL) {
+        Error("Tokenize", "Failed to allocate memory");
         return FailedTokenize;
     }
 
@@ -186,6 +198,7 @@ TokenArray Tokenize(int fd) {
     size_t TotalBytesRead = 0;
     char* Buffer = calloc(FileSize + 1, sizeof(char)); // +1 for the NULL Terminator
     if (Buffer == NULL) {
+        Error("Tokenize", "Failed to allocate memory for reading");
         FreeLexer(&Array);
         return FailedTokenize;
     }
@@ -194,6 +207,7 @@ TokenArray Tokenize(int fd) {
         ssize_t BytesRead = read(fd, &Buffer[TotalBytesRead], FileSize - TotalBytesRead);
 
         if (BytesRead == -1) {
+            Error("Tokenize", "Read failed");
             perror("read");
             FreeLexer(&Array);
             return FailedTokenize;
@@ -205,6 +219,7 @@ TokenArray Tokenize(int fd) {
 
     // Declare variables for tracking
     size_t Start = Invalid_Index;
+    size_t CurrentLine = 1;
     LexerMode Mode = LEXER_EMPTY;
 
     // Read the file byte by byte and tokenize every word
@@ -224,51 +239,50 @@ TokenArray Tokenize(int fd) {
 
                 size_t Length = index - Start;
 
-                Token* Output = NULL;
-                int err = CreateToken(&Array, &Output); // Defaults to TOKEN_UNKNOWN
-                if (err == -1 || Output == NULL) {
+                Token* ReservedToken = ReserveToken(&Array);
+                if (ReservedToken == NULL) {
                     // Failed to Create Token
-                    fputs("(1) (NEWLINE) Failed to Tokenize\n", stderr);
+                    Error("Tokenize" ,"(1) (NEWLINE) Failed to Tokenize\n");
                     FreeLexer(&Array);
                     free(Buffer);
                     return FailedTokenize;
                 }
 
-                Output->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
-                if (Output->Data == NULL) {
+                ReservedToken->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
+                if (ReservedToken->Data == NULL) {
                     // Failed to Create Token
-                    fputs("(2) (NEWLINE) Failed to Tokenize\n", stderr);
+                    Error("Tokenize" ,"(2) (NEWLINE) Failed to Tokenize\n");
                     FreeLexer(&Array);
                     free(Buffer);
                     return FailedTokenize;
                 }
 
-                memcpy(Output->Data, &Buffer[Start], Length);
+                memcpy(ReservedToken->Data, &Buffer[Start], Length);
 
-                Output->Length = Length;
+                ReservedToken->Length = Length;
 
                 // Ensure Null Terminator
-                Output->Data[Length] = '\0'; // In case of feature modifications..
+                ReservedToken->Data[Length] = '\0'; // In case of feature modifications..
 
                 // Type the token
                 
                 // Defaults to TOKEN_INDENTIFER
 
                 // Keywords
-                if (Output->Token == TOKEN_IDENTIFIER) {
+                if (ReservedToken->Token == TOKEN_IDENTIFIER) {
 
                     size_t Keywords = sizeof(KeywordEntries)/sizeof(KeywordEntries[0]);
                     for (size_t index = 0; index < Keywords; index++) {
-                        if (strcmp(Output->Data, KeywordEntries[index].Word) == 0) { // In this case strcmp is safe because both strings are NULL terminated
-                            Output->Token = KeywordEntries[index].Token;
+                        if (strcmp(ReservedToken->Data, KeywordEntries[index].Word) == 0) { // In this case strcmp is safe because both strings are NULL terminated
+                            ReservedToken->Token = KeywordEntries[index].Token;
                         }
                     }
 
                 }
                 
                 // Number
-                if (IsNumberOnly(Output->Data, Output->Length) == 0 && Output->Token == TOKEN_IDENTIFIER) {
-                    Output->Token = TOKEN_NUMBER;
+                if (IsNumberOnly(ReservedToken->Data, ReservedToken->Length) == 0 && ReservedToken->Token == TOKEN_IDENTIFIER) {
+                    ReservedToken->Token = TOKEN_NUMBER;
                 }
 
             }
@@ -276,7 +290,7 @@ TokenArray Tokenize(int fd) {
             // Reset tracking variables
             Start = Invalid_Index;
             Mode = LEXER_EMPTY; // Reset Processing Mode
-
+            CurrentLine++;
         }
 
         if (Mode == LEXER_COMMENT || Mode == LEXER_EMPTY) { // Skip processing 
@@ -313,55 +327,55 @@ TokenArray Tokenize(int fd) {
 
                     size_t Length = index - Start;
 
-                    Token* Output = NULL;
-                    int err = CreateToken(&Array, &Output);
-                    if (err == -1 || Output == NULL) {
+                    Token* ReservedToken = ReserveToken(&Array);
+                    if (ReservedToken == NULL) {
                         // Failed to Create Token
-                        fputs("(1) Failed to Tokenize\n", stderr);
+                        Error("Tokenize", "(1) Failed to Tokenize\n");
                         FreeLexer(&Array);
                         free(Buffer);
                         return FailedTokenize;
                     }
 
-                    Output->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
-                    if (Output->Data == NULL) {
+                    ReservedToken->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
+                    if (ReservedToken->Data == NULL) {
                         // Failed to Create Token
-                        fputs("(2) Failed to Tokenize\n", stderr);
+                        Error("Tokenize" ,"(2) Failed to Tokenize\n");
                         FreeLexer(&Array);
                         free(Buffer);
                         return FailedTokenize;
                     }
 
-                    memcpy(Output->Data, &Buffer[Start], Length);
+                    memcpy(ReservedToken->Data, &Buffer[Start], Length);
 
-                    Output->Length = Length;
+                    ReservedToken->Length = Length;
+                    ReservedToken->Line = CurrentLine;
 
                     // Ensure Null Terminator
-                    Output->Data[Length] = '\0'; // In case of feature modifications..
+                    ReservedToken->Data[Length] = '\0'; // In case of feature modifications..
 
                     // Type the token
                     
                     // Defaults to TOKEN_INDENTIFER
 
                     // Keywords
-                    if (Output->Token == TOKEN_IDENTIFIER) {
+                    if (ReservedToken->Token == TOKEN_IDENTIFIER) {
 
                         size_t Keywords = sizeof(KeywordEntries)/sizeof(KeywordEntries[0]);
                         for (size_t index = 0; index < Keywords; index++) {
-                            if (strcmp(Output->Data, KeywordEntries[index].Word) == 0) { // In this case strcmp is safe because both strings are NULL terminated
-                                Output->Token = KeywordEntries[index].Token;
+                            if (strcmp(ReservedToken->Data, KeywordEntries[index].Word) == 0) { // In this case strcmp is safe because both strings are NULL terminated
+                                ReservedToken->Token = KeywordEntries[index].Token;
                             }
                         }
 
                     }
                     
                     // Number
-                    if (IsNumberOnly(Output->Data, Output->Length) == 0 && Output->Token == TOKEN_IDENTIFIER) {
-                        Output->Token = TOKEN_NUMBER;
+                    if (IsNumberOnly(ReservedToken->Data, ReservedToken->Length) == 0 && ReservedToken->Token == TOKEN_IDENTIFIER) {
+                        ReservedToken->Token = TOKEN_NUMBER;
                     }
 
-
                     Start = Invalid_Index;
+                    Mode = LEXER_NORMAL;
                 }
             break;
             case LEXER_STRING: // Keep looking for a END '"' until you reach FileSize..
@@ -369,33 +383,33 @@ TokenArray Tokenize(int fd) {
 
                         size_t Length = (index + 1) - Start;
 
-                        Token* Output = NULL;
-                        int err = CreateToken(&Array, &Output);
-                        if (err == -1 || Output == NULL) {
+                        Token* ReservedToken = ReserveToken(&Array);
+                        if (ReservedToken == NULL) {
                             // Failed to Create Token
-                            fputs("(1) (STRING) Failed to Tokenize\n", stderr);
+                            Error("Tokenize", "(1) (STRING) Failed to Tokenize\n");
                             FreeLexer(&Array);
                             free(Buffer);
                             return FailedTokenize;
                         }
 
-                        Output->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
-                        if (Output->Data == NULL) {
+                        ReservedToken->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
+                        if (ReservedToken->Data == NULL) {
                             // Failed to Create Token
-                            fputs("(2) (STRING) Failed to Tokenize\n", stderr);
+                            Error("Tokenize", "(2) (STRING) Failed to Tokenize\n");
                             FreeLexer(&Array);
                             free(Buffer);
                             return FailedTokenize;
                         }
 
-                        Output->Token = TOKEN_STRING;
+                        ReservedToken->Token = TOKEN_STRING;
 
-                        memcpy(Output->Data, &Buffer[Start], Length);
+                        memcpy(ReservedToken->Data, &Buffer[Start], Length);
 
-                        Output->Length = Length;
+                        ReservedToken->Length = Length;
+                        ReservedToken->Line = CurrentLine;
 
                         // Ensure Null Terminator
-                        Output->Data[Length] = '\0'; // In case of feature modifications..
+                        ReservedToken->Data[Length] = '\0'; // In case of feature modifications..
 
                         Start = Invalid_Index;
                         Mode = LEXER_NORMAL;
@@ -410,51 +424,51 @@ TokenArray Tokenize(int fd) {
 
                         size_t Length = index - Start;
                         
-                        Token* Output = NULL;
-                        int err = CreateToken(&Array, &Output); // Defaults to TOKEN_UNKNOWN
-                        if (err == -1 || Output == NULL) {
+                        Token* ReservedToken = ReserveToken(&Array);
+                        if (ReservedToken == NULL) {
                             // Failed to Create Token
-                            fputs("(1) (COMMENT) Failed to Tokenize\n", stderr);
+                            Error("Tokenize", "(1) (COMMENT) Failed to Tokenize\n");
                             FreeLexer(&Array);
                             free(Buffer);
                             return FailedTokenize;
                         }
 
-                        Output->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
-                        if (Output->Data == NULL) {
+                        ReservedToken->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
+                        if (ReservedToken->Data == NULL) {
                             // Failed to Create Token
-                            fputs("(2) (COMMENT) Failed to Tokenize\n", stderr);
+                            Error("Tokenize", "(2) (COMMENT) Failed to Tokenize\n");
                             FreeLexer(&Array);
                             free(Buffer);
                             return FailedTokenize;
                         }
 
-                        memcpy(Output->Data, &Buffer[Start], Length);
+                        memcpy(ReservedToken->Data, &Buffer[Start], Length);
 
-                        Output->Length = Length;
+                        ReservedToken->Length = Length;
+                        ReservedToken->Line = CurrentLine;
 
                         // Ensure Null Terminator
-                        Output->Data[Length] = '\0'; // In case of feature modifications..
+                        ReservedToken->Data[Length] = '\0'; // In case of feature modifications..
 
                         // Type the token
                         
                         // Defaults to TOKEN_INDENTIFER
 
                         // Keywords
-                        if (Output->Token == TOKEN_IDENTIFIER) {
+                        if (ReservedToken->Token == TOKEN_IDENTIFIER) {
 
                             size_t Keywords = sizeof(KeywordEntries)/sizeof(KeywordEntries[0]);
                             for (size_t index = 0; index < Keywords; index++) {
-                                if (strcmp(Output->Data, KeywordEntries[index].Word) == 0) { // In this case strcmp is safe because both strings are NULL terminated
-                                    Output->Token = KeywordEntries[index].Token;
+                                if (strcmp(ReservedToken->Data, KeywordEntries[index].Word) == 0) { // In this case strcmp is safe because both strings are NULL terminated
+                                    ReservedToken->Token = KeywordEntries[index].Token;
                                 }
                             }
 
                         }
                         
                         // Number
-                        if (IsNumberOnly(Output->Data, Output->Length) == 0 && Output->Token == TOKEN_IDENTIFIER) {
-                            Output->Token = TOKEN_NUMBER;
+                        if (IsNumberOnly(ReservedToken->Data, ReservedToken->Length) == 0 && ReservedToken->Token == TOKEN_IDENTIFIER) {
+                            ReservedToken->Token = TOKEN_NUMBER;
                         }
 
                         Start = Invalid_Index;
@@ -466,48 +480,50 @@ TokenArray Tokenize(int fd) {
                         // Tokenize
                         size_t Length = 1;
                         
-                        Token* Output = NULL;
-                        int err = CreateToken(&Array, &Output); // Defaults to TOKEN_UNKNOWN
-                        if (err == -1 || Output == NULL) {
+                        Token* ReservedToken = ReserveToken(&Array);
+                        if (ReservedToken == NULL) {
                             // Failed to Create Token
-                            fputs("(1) (SINGLE CHARACTER) Failed to Tokenize\n", stderr);
+                            Error("Tokenize", "(1) (SINGLE CHARACTER) Failed to Tokenize\n");
                             FreeLexer(&Array);
                             free(Buffer);
                             return FailedTokenize;
                         }
 
-                        Output->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
-                        if (Output->Data == NULL) {
+                        ReservedToken->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
+                        if (ReservedToken->Data == NULL) {
                             // Failed to Create Token
-                            fputs("(2) (SINGLE CHARACTER) Failed to Tokenize\n", stderr);
+                            Error("Tokenize", "(2) (SINGLE CHARACTER) Failed to Tokenize\n");
                             FreeLexer(&Array);
                             free(Buffer);
                             return FailedTokenize;
                         }
 
-                        memcpy(Output->Data, &Buffer[index], Length);
+                        memcpy(ReservedToken->Data, &Buffer[index], Length);
 
                         // Type the token
                         if (SingleCharacter == '(') {
-                            Output->Token = TOKEN_PARENTHESES1;
+                            ReservedToken->Token = TOKEN_PARENTHESES1;
                         } else if (SingleCharacter == ')') {
-                            Output->Token = TOKEN_PARENTHESES2;
+                            ReservedToken->Token = TOKEN_PARENTHESES2;
                         } else if (SingleCharacter == '[') {
-                            Output->Token = TOKEN_SQUARE_BRACKETS1;
+                            ReservedToken->Token = TOKEN_SQUARE_BRACKETS1;
                         } else if (SingleCharacter == ']') {
-                            Output->Token = TOKEN_SQUARE_BRACKETS2;
+                            ReservedToken->Token = TOKEN_SQUARE_BRACKETS2;
                         } else if (SingleCharacter == '{') {
-                            Output->Token = TOKEN_BRACKETS1;
+                            ReservedToken->Token = TOKEN_BRACKETS1;
                         } else if (SingleCharacter == '}') {
-                            Output->Token = TOKEN_BRACKETS2;
+                            ReservedToken->Token = TOKEN_BRACKETS2;
                         } else if (SingleCharacter == ',') {
-                            Output->Token = TOKEN_COMMA;
+                            ReservedToken->Token = TOKEN_COMMA;
+                        } else {
+                            ReservedToken->Token = TOKEN_UNKNOWN;
                         }
 
-                        Output->Length = Length;
+                        ReservedToken->Length = Length;
+                        ReservedToken->Line = CurrentLine;
 
                         // Ensure Null Terminator
-                        Output->Data[Length] = '\0'; // In case of feature modifications..
+                        ReservedToken->Data[Length] = '\0'; // In case of feature modifications..
                         
                         Start = Invalid_Index;
                         Mode = LEXER_NORMAL;
@@ -518,49 +534,48 @@ TokenArray Tokenize(int fd) {
 
                         size_t Length = 1;
 
-                        if (index + 1 <= FileSize && Buffer[index + 1] == '=') {
+                        if ((index + 1) < FileSize && Buffer[index + 1] == '=') {
                             // Multi Operator
                             Length++;
                         }
                        
-                        Token* Output = NULL;
-                        int err = CreateToken(&Array, &Output); // Defaults to TOKEN_UNKNOWN
-                        if (err == -1 || Output == NULL) {
+                        Token* ReservedToken = ReserveToken(&Array);
+                        if (ReservedToken == NULL) {
                             // Failed to Create Token
-                            fputs("(1) (OPERATOR) Failed to Tokenize\n", stderr);
+                            Error("Tokenize", "(1) (OPERATOR) Failed to Tokenize\n");
                             FreeLexer(&Array);
                             free(Buffer);
                             return FailedTokenize;
                         }
 
-                        Output->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
-                        if (Output->Data == NULL) {
+                        ReservedToken->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
+                        if (ReservedToken->Data == NULL) {
                             // Failed to Create Token
-                            fputs("(2) (OPERATOR) Failed to Tokenize\n", stderr);
+                            Error("Tokenize", "(2) (OPERATOR) Failed to Tokenize\n");
                             FreeLexer(&Array);
                             free(Buffer);
                             return FailedTokenize;
                         }
 
-                        memcpy(Output->Data, &Buffer[index], Length);
+                        memcpy(ReservedToken->Data, &Buffer[index], Length);
 
                         // Type the token
                         if (Length == 2) {
-                            Output->Token = TOKEN_MULTI_OPERATOR;
+                            ReservedToken->Token = TOKEN_MULTI_OPERATOR;
                         } else if (Length == 1) {
-                            Output->Token = TOKEN_SINGLE_OPERATOR;
+                            ReservedToken->Token = TOKEN_SINGLE_OPERATOR;
                         }
 
-                        Output->Length = Length;
+                        ReservedToken->Length = Length;
+                        ReservedToken->Line = CurrentLine;
 
                         // Ensure Null Terminator
-                        Output->Data[Length] = '\0'; // In case of feature modifications..
+                        ReservedToken->Data[Length] = '\0'; // In case of feature modifications..
 
                         if (Length == 2) {
                             index++;
                         }
 
-                        index++;
                         Start = Invalid_Index;
                         Mode = LEXER_NORMAL;
                         continue; // Skip
@@ -575,11 +590,11 @@ TokenArray Tokenize(int fd) {
 
                         continue; // Skip
                     }
-                    
+
                 break;
             }
             default:
-                fputs("Lexer: What? Why did the switch statement enter default mode??\n", stderr);
+                Error("Tokenize" ,"What? Why did the switch statement enter default mode??\n");
                 FreeLexer(&Array);
                 free(Buffer);
                 return FailedTokenize;
@@ -595,49 +610,51 @@ TokenArray Tokenize(int fd) {
         size_t Length = FileSize - Start;
 
         // Tokenize
-        Token* Output = NULL;
-        int err = CreateToken(&Array, &Output); // Defaults to TOKEN_UNKNOWN
-        if (err == -1 || Output == NULL) {
+        Token* ReservedToken = ReserveToken(&Array); // Defaults to TOKEN_UNKNOWN
+        if (ReservedToken == NULL) {
             // Failed to Create Token
-            fputs("(1) (END) Failed to Tokenize\n", stderr);
+            Error("Tokenize", "(1) (END) Failed to Tokenize\n");
             FreeLexer(&Array);
             free(Buffer);
             return FailedTokenize;
         }
 
-        Output->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
-        if (Output->Data == NULL) {
+        ReservedToken->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
+        if (ReservedToken->Data == NULL) {
             // Failed to Create Token
-            fputs("(2) (END) Failed to Tokenize\n", stderr);
+            Error("Tokenize", "(2) (END) Failed to Tokenize\n");
             FreeLexer(&Array);
             free(Buffer);
             return FailedTokenize;
         }
 
-        memcpy(Output->Data, &Buffer[Start], Length);
+        memcpy(ReservedToken->Data, &Buffer[Start], Length);
+
+        ReservedToken->Length = Length;
+        ReservedToken->Length = CurrentLine;
 
         // Ensure Null Terminator
-        Output->Data[Length] = '\0'; // In case of feature modifications..
+        ReservedToken->Data[Length] = '\0'; // In case of feature modifications..
 
         // Type the token
         
         // Defaults to TOKEN_INDENTIFER
 
         // Keywords
-        if (Output->Token == TOKEN_IDENTIFIER) {
+        if (ReservedToken->Token == TOKEN_IDENTIFIER) {
 
             size_t Keywords = sizeof(KeywordEntries)/sizeof(KeywordEntries[0]);
             for (size_t index = 0; index < Keywords; index++) {
-                if (strcmp(Output->Data, KeywordEntries[index].Word) == 0) { // In this case strcmp is safe because both strings are NULL terminated
-                    Output->Token = KeywordEntries[index].Token;
+                if (strcmp(ReservedToken->Data, KeywordEntries[index].Word) == 0) { // In this case strcmp is safe because both strings are NULL terminated
+                    ReservedToken->Token = KeywordEntries[index].Token;
                 }
             }
 
         }
         
         // Number
-        if (IsNumberOnly(Output->Data, Output->Length) == 0 && Output->Token == TOKEN_IDENTIFIER) {
-            Output->Token = TOKEN_NUMBER;
+        if (IsNumberOnly(ReservedToken->Data, ReservedToken->Length) == 0 && ReservedToken->Token == TOKEN_IDENTIFIER) {
+            ReservedToken->Token = TOKEN_NUMBER;
         }
 
         // Reset tracking variables in case of feature modifications
@@ -649,8 +666,8 @@ TokenArray Tokenize(int fd) {
     free(Buffer);
 
     // Clean Array
-    if (CleanTokenArray(&Array) == -1) {
-        fputs("Failed to clean token array\n", stderr);
+    if (CleanLexer(&Array) == -1) {
+        Error("Tokenize", "Failed to clean token array\n");
         FreeLexer(&Array);
         return FailedTokenize;
     }
@@ -658,9 +675,10 @@ TokenArray Tokenize(int fd) {
     return Array;
 }
 
-void FreeLexer(TokenArray* Array) {
+void FreeLexer(Lexer* Array) {
     
     if (Array == NULL || Array->Array == NULL) {
+        Error("FreeLexer", "Expected NON NULL args");
         return; // Ensure we are not freeing a NULL array (Token* Array)
     }
     
