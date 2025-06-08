@@ -114,7 +114,7 @@ typedef struct Abstract_Syntax_Tree{
 // Uses tokens to ensure correct grammar and syntax for KebabLang and creates a Abstract Syntax Tree for the interpreter
 // Returns AbstractSyntaxTree on success
 // Returns AbstractSyntaxTree with Node* NodeArray as NULL on failure
-Abstract_Syntax_Tree Parse(TokenArray* Tokens);
+Abstract_Syntax_Tree Parse(Lexer* Tokens);
 
 // Frees the Abstract Syntax Tree
 void FreeParser(Abstract_Syntax_Tree* AST);
