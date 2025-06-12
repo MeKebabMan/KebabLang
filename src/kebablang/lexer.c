@@ -23,7 +23,7 @@
 #define Is_Operator(c) ((c) == '+' || (c) == '-' || (c) == '*' || (c) == '/' || (c) == '^' || (c) == '%' || (c) == '<' || (c) == '>' || (c) == '!' || (c) == '=')
 
 #define Invalid_Index ((size_t)-1)
-#define Error(Function, Messaage) fprintf(stderr, "Lexer: (%s) %s\n", Function, Messaage);
+#define Error(Messaage) fprintf(stderr, "Lexer: (%s) %s\n", __func__, Messaage);
 
 // Structures
 
@@ -62,7 +62,7 @@ static int CleanLexer(Lexer* Array); // Declaration
 static Token* ReserveToken(Lexer* Array) {
 
     if (Array == NULL || Array->Array == NULL) {
-        Error("CreateToken", "Expected NON NULL args")
+        Error("Expected NON NULL args")
         return NULL;
     }
 
@@ -70,7 +70,7 @@ static Token* ReserveToken(Lexer* Array) {
     if (Array->AllocatedTokens == Array->Size) {
         // Extend the Array
         if (ExtendLexer(Array, 4) == -1) { // Extend by 4 so we can easily insert
-            Error("CreateToken", "Failed to extend memory");
+            Error("Failed to extend memory");
             return NULL;
         }
     }
@@ -94,7 +94,7 @@ static Token* ReserveToken(Lexer* Array) {
 static int ExtendLexer(Lexer* Array, size_t ExtendSize) {
 
     if (Array == NULL || Array->Array == NULL) {
-        Error("ExtendLexer", "Expected NON NULL args");
+        Error("Expected NON NULL args");
         return -1;
     }
 
@@ -105,7 +105,7 @@ static int ExtendLexer(Lexer* Array, size_t ExtendSize) {
     // New allocation
     Token* NewAllocation = calloc(Array->Size + ExtendSize, sizeof(Token));
     if (NewAllocation == NULL) {
-        Error("ExtendLexer", "Failed to allocate memory");
+        Error("Failed to allocate memory");
         return -1;
     }
 
@@ -127,7 +127,7 @@ static int ExtendLexer(Lexer* Array, size_t ExtendSize) {
 static int CleanLexer(Lexer* Array) { // Cleans up all the unused space within the Array (Based on size_t AllocatedTokens)
     
     if (Array == NULL || Array->Array == NULL) {
-        Error("CleanLexer", "Expected NON NULL args");
+        Error("Expected NON NULL args");
         return -1;
     }
 
@@ -138,7 +138,7 @@ static int CleanLexer(Lexer* Array) { // Cleans up all the unused space within t
     // Allocate new memory
     Token* NewAllocation = malloc(Array->AllocatedTokens * sizeof(Token));
     if (NewAllocation == NULL) {
-        Error("CleanLexer", "Failed to allocate memory");
+        Error("Failed to allocate memory");
         return -1;
     }
 
@@ -168,13 +168,13 @@ Lexer Tokenize(int fd) {
     // By the way this also is pretty much a check to ensure the file descripter is valid
     struct stat metadata; 
     if (fstat(fd, &metadata) == -1) {
-        Error("Tokenize", "Failed to get file meta data");
+        Error("Failed to get file meta data");
         return FailedTokenize;
     }
 
     // Ensure the file is a normal file
     if (!S_ISREG(metadata.st_mode)) {
-        Error("Tokenize", "Expected regular file");
+        Error("Expected regular file");
         return FailedTokenize;
     }
 
@@ -190,7 +190,7 @@ Lexer Tokenize(int fd) {
     };
 
     if (Array.Array == NULL) {
-        Error("Tokenize", "Failed to allocate memory");
+        Error("Failed to allocate memory");
         return FailedTokenize;
     }
 
@@ -198,7 +198,7 @@ Lexer Tokenize(int fd) {
     size_t TotalBytesRead = 0;
     char* Buffer = calloc(FileSize + 1, sizeof(char)); // +1 for the NULL Terminator
     if (Buffer == NULL) {
-        Error("Tokenize", "Failed to allocate memory for reading");
+        Error("Failed to allocate memory for reading");
         FreeLexer(&Array);
         return FailedTokenize;
     }
@@ -207,7 +207,7 @@ Lexer Tokenize(int fd) {
         ssize_t BytesRead = read(fd, &Buffer[TotalBytesRead], FileSize - TotalBytesRead);
 
         if (BytesRead == -1) {
-            Error("Tokenize", "Read failed");
+            Error("Read failed");
             perror("read");
             FreeLexer(&Array);
             return FailedTokenize;
@@ -242,7 +242,7 @@ Lexer Tokenize(int fd) {
                 Token* ReservedToken = ReserveToken(&Array);
                 if (ReservedToken == NULL) {
                     // Failed to Create Token
-                    Error("Tokenize" ,"(1) (NEWLINE) Failed to Tokenize\n");
+                    Error("(1) (NEWLINE) Failed to Tokenize\n");
                     FreeLexer(&Array);
                     free(Buffer);
                     return FailedTokenize;
@@ -251,7 +251,7 @@ Lexer Tokenize(int fd) {
                 ReservedToken->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
                 if (ReservedToken->Data == NULL) {
                     // Failed to Create Token
-                    Error("Tokenize" ,"(2) (NEWLINE) Failed to Tokenize\n");
+                    Error("(2) (NEWLINE) Failed to Tokenize\n");
                     FreeLexer(&Array);
                     free(Buffer);
                     return FailedTokenize;
@@ -330,7 +330,7 @@ Lexer Tokenize(int fd) {
                     Token* ReservedToken = ReserveToken(&Array);
                     if (ReservedToken == NULL) {
                         // Failed to Create Token
-                        Error("Tokenize", "(1) Failed to Tokenize\n");
+                        Error("(1) Failed to Tokenize\n");
                         FreeLexer(&Array);
                         free(Buffer);
                         return FailedTokenize;
@@ -339,7 +339,7 @@ Lexer Tokenize(int fd) {
                     ReservedToken->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
                     if (ReservedToken->Data == NULL) {
                         // Failed to Create Token
-                        Error("Tokenize" ,"(2) Failed to Tokenize\n");
+                        Error("(2) Failed to Tokenize\n");
                         FreeLexer(&Array);
                         free(Buffer);
                         return FailedTokenize;
@@ -386,7 +386,7 @@ Lexer Tokenize(int fd) {
                         Token* ReservedToken = ReserveToken(&Array);
                         if (ReservedToken == NULL) {
                             // Failed to Create Token
-                            Error("Tokenize", "(1) (STRING) Failed to Tokenize\n");
+                            Error("(1) (STRING) Failed to Tokenize\n");
                             FreeLexer(&Array);
                             free(Buffer);
                             return FailedTokenize;
@@ -395,7 +395,7 @@ Lexer Tokenize(int fd) {
                         ReservedToken->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
                         if (ReservedToken->Data == NULL) {
                             // Failed to Create Token
-                            Error("Tokenize", "(2) (STRING) Failed to Tokenize\n");
+                            Error("(2) (STRING) Failed to Tokenize\n");
                             FreeLexer(&Array);
                             free(Buffer);
                             return FailedTokenize;
@@ -427,7 +427,7 @@ Lexer Tokenize(int fd) {
                         Token* ReservedToken = ReserveToken(&Array);
                         if (ReservedToken == NULL) {
                             // Failed to Create Token
-                            Error("Tokenize", "(1) (COMMENT) Failed to Tokenize\n");
+                            Error("(1) (COMMENT) Failed to Tokenize\n");
                             FreeLexer(&Array);
                             free(Buffer);
                             return FailedTokenize;
@@ -436,7 +436,7 @@ Lexer Tokenize(int fd) {
                         ReservedToken->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
                         if (ReservedToken->Data == NULL) {
                             // Failed to Create Token
-                            Error("Tokenize", "(2) (COMMENT) Failed to Tokenize\n");
+                            Error("(2) (COMMENT) Failed to Tokenize\n");
                             FreeLexer(&Array);
                             free(Buffer);
                             return FailedTokenize;
@@ -483,7 +483,7 @@ Lexer Tokenize(int fd) {
                         Token* ReservedToken = ReserveToken(&Array);
                         if (ReservedToken == NULL) {
                             // Failed to Create Token
-                            Error("Tokenize", "(1) (SINGLE CHARACTER) Failed to Tokenize\n");
+                            Error("(1) (SINGLE CHARACTER) Failed to Tokenize\n");
                             FreeLexer(&Array);
                             free(Buffer);
                             return FailedTokenize;
@@ -492,7 +492,7 @@ Lexer Tokenize(int fd) {
                         ReservedToken->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
                         if (ReservedToken->Data == NULL) {
                             // Failed to Create Token
-                            Error("Tokenize", "(2) (SINGLE CHARACTER) Failed to Tokenize\n");
+                            Error("(2) (SINGLE CHARACTER) Failed to Tokenize\n");
                             FreeLexer(&Array);
                             free(Buffer);
                             return FailedTokenize;
@@ -542,7 +542,7 @@ Lexer Tokenize(int fd) {
                         Token* ReservedToken = ReserveToken(&Array);
                         if (ReservedToken == NULL) {
                             // Failed to Create Token
-                            Error("Tokenize", "(1) (OPERATOR) Failed to Tokenize\n");
+                            Error("(1) (OPERATOR) Failed to Tokenize\n");
                             FreeLexer(&Array);
                             free(Buffer);
                             return FailedTokenize;
@@ -551,7 +551,7 @@ Lexer Tokenize(int fd) {
                         ReservedToken->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
                         if (ReservedToken->Data == NULL) {
                             // Failed to Create Token
-                            Error("Tokenize", "(2) (OPERATOR) Failed to Tokenize\n");
+                            Error("(2) (OPERATOR) Failed to Tokenize\n");
                             FreeLexer(&Array);
                             free(Buffer);
                             return FailedTokenize;
@@ -594,7 +594,7 @@ Lexer Tokenize(int fd) {
                 break;
             }
             default:
-                Error("Tokenize" ,"What? Why did the switch statement enter default mode??\n");
+                Error("What? Why did the switch statement enter default mode??\n");
                 FreeLexer(&Array);
                 free(Buffer);
                 return FailedTokenize;
@@ -613,7 +613,7 @@ Lexer Tokenize(int fd) {
         Token* ReservedToken = ReserveToken(&Array); // Defaults to TOKEN_UNKNOWN
         if (ReservedToken == NULL) {
             // Failed to Create Token
-            Error("Tokenize", "(1) (END) Failed to Tokenize\n");
+            Error("(1) (END) Failed to Tokenize\n");
             FreeLexer(&Array);
             free(Buffer);
             return FailedTokenize;
@@ -622,7 +622,7 @@ Lexer Tokenize(int fd) {
         ReservedToken->Data = calloc(Length + 1, sizeof(char)); // +1 For the NULL Terminator
         if (ReservedToken->Data == NULL) {
             // Failed to Create Token
-            Error("Tokenize", "(2) (END) Failed to Tokenize\n");
+            Error("(2) (END) Failed to Tokenize\n");
             FreeLexer(&Array);
             free(Buffer);
             return FailedTokenize;
@@ -667,7 +667,7 @@ Lexer Tokenize(int fd) {
 
     // Clean Array
     if (CleanLexer(&Array) == -1) {
-        Error("Tokenize", "Failed to clean token array\n");
+        Error("Failed to clean token array\n");
         FreeLexer(&Array);
         return FailedTokenize;
     }
@@ -678,7 +678,7 @@ Lexer Tokenize(int fd) {
 void FreeLexer(Lexer* Array) {
     
     if (Array == NULL || Array->Array == NULL) {
-        Error("FreeLexer", "Expected NON NULL args");
+        Error("Expected NON NULL args");
         return; // Ensure we are not freeing a NULL array (Token* Array)
     }
     

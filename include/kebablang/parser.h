@@ -20,7 +20,7 @@ typedef enum {
     ASTNODE_STRING, // A string.. (char*)
     ASTNODE_VARIABLE, // A Variable name.. used for stuff like this print( <MyVariable> ) (char*)
     ASTNODE_BOOLEAN, // A boolean (true / false)
-    ASTNODE_MATH_OPERATION, // Used for math.. <LEFT> <OPERATOR> <RIGHT> (3 * 2, etc) (struct MathOperation)
+    ASTNODE_BINARY_OPERATION, // Used for math and expressions.. <LEFT> <OPERATOR> <RIGHT> (3 * 2, etc) (struct AST_BinaryOperation)
     ASTNODE_VARIABLE_DEFINE, // Used for creating variables.. MyVariable = "Hello, World!" (Struct VariableDefine)
     ASTNODE_FUNCTION_CALL, // Used for calling functions.. <Function>() (struct FunctionCall)
     ASTNODE_FUNCTION_DEFINE, // Used for creating functions.. <Function>() { <Body> }
@@ -29,13 +29,22 @@ typedef enum {
 } NodeTypes;
 
 typedef enum {
-    OP_ADD,
-    OP_SUB,
-    OP_TIMES,
-    OP_POWER,
-    OP_DIVIDE,
-    OP_MODULO
-} MathOperators;
+
+    // Comparison
+    OP_COMPARE, // ==
+    OP_BIGGER_THAN, // >
+    OP_LESS_THAN, // <
+    OP_BIGGER_THAN_COMPARE, // >=
+    OP_LESS_THAN_COMPARE, // <=
+
+    // MATH
+    OP_ADD, // +
+    OP_SUB, // -
+    OP_TIMES, // *
+    OP_POWER, // ^
+    OP_DIVIDE, // /
+    OP_MODULO // %
+} Operators;
 
 // Structures
 
@@ -80,11 +89,11 @@ typedef struct AST_VariableDefine {
     struct AST_Node* VariableValue;
 } AST_VariableDefine;
 
-typedef struct AST_MathOperation {
-    MathOperators Operator;
+typedef struct AST_BinaryOperation {
+    Operators Operator;
     struct AST_Node* Left;
     struct AST_Node* Right;
-} AST_MathOperation;
+} AST_BinaryOperation;
 
 
 typedef struct AST_Node {
@@ -94,7 +103,7 @@ typedef struct AST_Node {
         char* String; // ASTNODE_STRING
         char* Variable; // ASTNODE_VARIABLE
         bool Boolean; // ASTNODE_BOOLEAN
-        AST_MathOperation Math; // ASTNODE_MATH_OPERATION
+        AST_BinaryOperation BinaryOperation; // ASTNODE_BINARY_OPERATION
         AST_VariableDefine VariableDefine; // ASTNODE_VARIABLE_DEFINE
         AST_FunctionCall FunctionCall; // ASTNODE_FUNCTION_CALL
         AST_FunctionDefine FunctionDefine; // ASTNODE_FUNCTION_DEFINE
